@@ -61,12 +61,12 @@ x = data[:,1]
 y = log10.(1 .- data[:, [2, 3, 4]])
 plot(x, y,
 	 linewidth = 2,
-	 labels = ["No\ncorrection" "2nd order\nMagnus" "4nd order\nMagnus"])
+	 labels = ["No\ncorrection" "2nd order\nMagnus" "4th order\nMagnus"])
 plot!(tickfont = font(12, "Serif"),
-      xlabel = "gate time "*L"\chi t_\mathrm{f}",
+      xlabel = "gate time "*L"|\chi| t_\mathrm{f}",
       ylabel = "Fidelity error "*L"\varepsilon",
-      guidefontsize = 14,
-      legendfontsize = 12,
+      guidefont = font(14, "Serif"),
+	  legendfont = font(12, "Serif"),
 	  background_color_legend = false,
       margin = 5Plots.mm)
 savefig("fidelity_error.pdf")
