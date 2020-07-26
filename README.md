@@ -1,2 +1,4 @@
 # MagnusCorrection
-The code contained in this repository implements the Magnus correction in different physical systems.
+The code contained in this repository implements the Magnus correction in different physical systems. With this code one can generate the figures and data files contained in the paper "Engineering Fast High-Fidelity Quantum Operations With Constrained Interactions" (https://arxiv.org/abs/2003.12096).
+
+The files in each folder are named in accordance with the figures numbers in the above mentioned paper. To generate a given figure and the data files, you need to either download the folder that contains the perticular figure file and add the file MagnusExpansion.jl to this folder, or change `include("MagnusExpansion.jl")` to `include("dir/MagnusExpansion.jl")` in the figure file, where `dir` should be the directory where the file MagnusExpansion.jl is contained. After that, simply run the `fig#.jl` file.
