@@ -47,9 +47,6 @@ for j = 1: nt
 	F2[j] = fidelity(U_nideal2, U_ideal, 2)
 end
 
-# aux = zeros(nt,2)
-# aux[:,1] = tf_array
-# aux[:,2] = log10.(1.0 .- F1)
 y = 1 .- hcat(F1, F2)
 plot(tf_array, y,
 	 linewidth = 2,
@@ -62,10 +59,8 @@ plot!(yaxis = :log,
 	  legendfont = font(12, "Serif"),
 	  background_color_legend = false,
 	  margin = 5Plots.mm)
-# plot(tf_array, 1.0 .- F1, xtickfont = font(16), ytickfont = font(16),
-#      linewidth=3, yaxis=:log)
-# plot!(tf_array, 1.0 .- F2, linewidth=3)
-savefig("fidelity_2ls.pdf")
+
+savefig("fig2a.pdf")
 
 y = abs.(transpose(coeffs_array))
 plot(tf_array, y,
@@ -79,7 +74,7 @@ plot!(yaxis = :log,
 	  legendfont = font(12, "Serif"),
 	  background_color_legend = false,
 	  margin = 5Plots.mm)
-savefig("coeffs.pdf")
+savefig("fig2b.pdf")
 
 output = zeros(nt, ncoeffs)
 output[:, 1] = tf_array

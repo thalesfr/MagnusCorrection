@@ -10,41 +10,41 @@ function correction_matrix(tf, env_Δ, env_pulse1, env_pulse2)
     M = zeros(3, dims)
     for i = 1: nΔ
         h1 = env_Δ[i]
-        func1 = @closure t-> h1(t/tf)*sin(2.0*c(t,tf))
+        func1 = @closure t-> h1(t/tf)*sin(2*c(t, tf))
         int_func1, err = quadgk(func1, 0.0, tf, rtol=1e-10, atol=1e-14)
-        func2 = @closure t-> h1(t/tf)*cos(2.0*c(t,tf))
+        func2 = @closure t-> h1(t/tf)*cos(2*c(t, tf))
         int_func2, err = quadgk(func2, 0.0, tf, rtol=1e-10, atol=1e-14)
-        M[2,i], M[3,i] = int_func1, int_func2
+        M[2, i], M[3, i] = int_func1, int_func2
     end
     for i = 1: npulse1
         h2 = env_pulse1[i]
-        func3 = @closure t-> h2(t/tf)*(1.0 + cos(2.0*t))/2.0
+        func3 = @closure t-> h2(t/tf)*(1 + cos(2*t))/2
         int_func3, err = quadgk(func3, 0.0, tf, rtol=1e-10, atol=1e-14)
-        func4 = @closure t-> -h2(t/tf)*sin(2.0*t)*cos(2.0*c(t,tf))/2.0
+        func4 = @closure t-> -h2(t/tf)*sin(2*t)*cos(2*c(t, tf))/2
         int_func4, err = quadgk(func4, 0.0, tf, rtol=1e-10, atol=1e-14)
-        func5 = @closure t-> h2(t/tf)*sin(2.0*t)*sin(2.0*c(t,tf))/2.0
+        func5 = @closure t-> h2(t/tf)*sin(2*t)*sin(2*c(t, tf))/2
         int_func5, err = quadgk(func5, 0.0, tf, rtol=1e-10, atol=1e-14)
 
         col = nΔ + i
-        M[1,col], M[2,col], M[3,col] = int_func3, int_func4, int_func5
+        M[1, col], M[2, col], M[3, col] = int_func3, int_func4, int_func5
     end
     for i = 1: npulse2
         h3 = env_pulse2[i]
-        func6 = @closure t-> h3(t/tf)*sin(2.0*t)/2.0
+        func6 = @closure t-> h3(t/tf)*sin(2*t)/2.0
         int_func6, err = quadgk(func6, 0.0, tf, rtol=1e-10, atol=1e-14)
-        func7 = @closure t-> -h3(t/tf)*(1.0-cos(2.0*t))*cos(2.0*c(t,tf))/2.0
+        func7 = @closure t-> -h3(t/tf)*(1 - cos(2*t))*cos(2*c(t, tf))/2
         int_func7, err = quadgk(func7, 0.0, tf, rtol=1e-10, atol=1e-14)
-        func8 = @closure t-> h3(t/tf)*(1.0-cos(2.0*t))*sin(2.0*c(t,tf))/2.0
+        func8 = @closure t-> h3(t/tf)*(1 - cos(2*t))*sin(2*c(t, tf))/2
         int_func8, err = quadgk(func8, 0.0, tf, rtol=1e-10, atol=1e-14)
 
         col = nΔ + npulse1 + i
-        M[1,col], M[2,col], M[3,col] = int_func6, int_func7, int_func8
+        M[1, col], M[2, col], M[3, col] = int_func6, int_func7, int_func8
     end
     return M
 end
 
 function coefficients_W(Omega, M)
-    ih_vec = Omega[1:3]
+    ih_vec = Omega[1: 3]
     coeffs = pinv(M)*ih_vec
     return coeffs
 end
