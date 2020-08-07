@@ -71,7 +71,7 @@ function delta_coeffs(system_params; eps=0.0)
 	M = zeros(3*N, 1)
 	control = 3
 	order = 0
-	W0_args = (control, order, (t, tf, order)->1.0)
+	W0_args = (control, order, (t, tf, order)-> 1.0)
 	indice = 1
 	V(t) = zeros(4, N)
 	for n=0:N-1
@@ -133,7 +133,7 @@ function linear_coeffs_col!(M, n, W0_args, indice, V, system_params)
 	α = system_params["alpha"]
 	N = system_params["N"]
 
-	funcV = @closure t-> V(t)[:,n+1]
+	funcV = @closure t-> V(t)[:, n + 1]
 	funcW = @closure t-> W0I(t, tf, χ, levels, α, n, W0_args, N)
 
 	f0 = zeros(4, 3)
@@ -143,7 +143,7 @@ function linear_coeffs_col!(M, n, W0_args, indice, V, system_params)
 	sol = DE.solve(prob, DE.Vern9(), saveat=[tf], reltol=1e-10, abstol=1e-12)
 	sol = sol(tf)
 
-	M[:, indice] .= -(sol[1:3,2] .+ sol[1:3,3])
+	M[:, indice] .= -(sol[1: 3, 2] .+ sol[1: 3, 3])
 end
 """
 Calculate the tensor with the coefficients of the quadratic products of the free
@@ -230,7 +230,11 @@ function nonlinear_coeffs_col!(M, n, W0_args1, W0_args2, index, system_params)
 
 	M[:, index[1], index[2]] .= -sol[1: 3, 3]
 end
-
+"""
+	df!(dOmega, Omega, args, t)
+The integral of this function is related to the coefficients of the linear terms in the
+polynomial system of equations.
+"""
 function df!(dOmega, Omega, args, t)
 	V = args[1]
 	W0 = args[2]
@@ -245,7 +249,11 @@ function df!(dOmega, Omega, args, t)
 	dOmega[:, 3] .= (temp1 .+ temp2)./2
 	return nothing
 end
-
+"""
+	df2!(dOmega, Omega, args, t)
+The integral of this function is related to the coefficients of the nonlinear terms in the
+polynomial system of equations.
+"""
 function df2!(dOmega, Omega, args, t)
 	W01 = args[1]
 	W02 = args[2]
@@ -258,7 +266,12 @@ function df2!(dOmega, Omega, args, t)
 	dOmega[:,3] .= temp1./2
 	return nothing
 end
-
+"""
+	correction_coeffs(Mlinear, Mnonlinear, Omega, max_order)
+Generate the system of polynomial equations in a given number subspace and find its
+solutions using homotopy continuation. Lagrange multipliers are used to find the solutions
+with smallest norm.
+"""
 function correction_coeffs(Mlinear, Mnonlinear, Omega, max_order)
 	HC.@polyvar x[1: 4*max_order]
 
@@ -293,7 +306,18 @@ function correction_coeffs(Mlinear, Mnonlinear, Omega, max_order)
 	end
 	return coeffs
 end
-
+"""
+	W(t, tf, χ, coeffs, max_order, Ncorr, N)
+Correction Hamiltonian in the qubit frame.
+# Arguments
+- `t::Real`: time.
+- `tf::Real`: gate time,
+- `χ::Tuple`: Tuple with first, second, and third order dispersive couplings.
+- `coeffs::Array`: corection coefficients.
+- `max_order::Integer`: maximum number of harmonics of the correction pulse.
+- `Ncorr::Integer`: bosonic subspace that should be corrected.
+- `N::Integer`: number of dimensions of the truncated bosonic space.
+"""
 function W(t, tf, χ, coeffs, max_order, Ncorr, N)
 	Wt = zeros(4, N)
 	χef = (χ[1], χ[2]/2, χ[3]/6)
@@ -304,7 +328,10 @@ function W(t, tf, χ, coeffs, max_order, Ncorr, N)
 	Wt[3, :] .= coeffs[end]/2
 	return Wt
 end
-
+"""
+	Wj!(Wt, t, tf, χef, j, coeffsj, max_order, N)
+Update `Wt` in the bosonic subspace associated with the `j`th number state.
+"""
 function Wj!(Wt, t, tf, χef, j, coeffsj, max_order, N)
 	gx, gy = g(t, tf, coeffsj, max_order)
 	for n = 0: N - 1
@@ -318,38 +345,43 @@ function Wj!(Wt, t, tf, χef, j, coeffsj, max_order, N)
 	end
 	return nothing
 end
-
+"""
+	g(t, tf, coeffs, max_order)
+Correction pulse envelope.
+# Arguments
+- `t::Real`: time.
+- `tf::Real`: gate time,
+- `coeffs::Array`: corection coefficients.
+- `max_order::Integer`: maximum number of harmonics of the correction pulse.
+"""
 function g(t, tf, coeffs, max_order)
-	gx, gy = 0.0, 0.0
+	gx, gy = zero(t), zero(t)
 	for order = 1: max_order
-		l = 2*(order - 1) + 1
-		a = coeffs[l]*fc(t, tf, order)
-		b = coeffs[l + 1]*fs(t, tf, order)
-		gx += a + b
+		cos_order = fc(t, tf, order)
+		sin_order = fs(t, tf, order)
 
-		l = 2*max_order + l
-		a = coeffs[l]*fc(t, tf, order)
-		b = coeffs[l + 1]*fs(t, tf, order)
-		gy += a + b
+		l = 2*(order - 1) + 1
+		gx += coeffs[l]*cos_order + coeffs[l + 1]*sin_order
+		l += 2*max_order
+		gy += coeffs[l]*cos_order + coeffs[l + 1]*sin_order
 	end
 	return gx, gy
 end
-
-# function WI(t, tf, χ, coeffs, max_order, levels, α, Ncorr, N)
-# 	T = tf/2.0
-# 	Wt = W(t, tf, χ, coeffs, max_order, Ncorr, N)
-# 	v = zeros(4,N)
-# 	if t < T + 10.0*eps()
-# 		v[1:2,:] .= intf(t, T, levels, zeros(length(α)), N)
-# 		WIt = unitary_tranformation(Wt, v, N)
-# 	else
-# 		v[1:2,:] .= intf(t-T, T, levels, α, N)
-# 		Wt .= unitary_tranformation(Wt, v, N)
-# 		v[1:2,:] .= intf(T, T, levels, zeros(length(α)), N)
-# 		WIt = unitary_tranformation(Wt, v, N)
-# 	end
-# 	return WIt
-# end
+"""
+	WI(t, tf, χ, coeffs, max_order, levels, α, Ncorr, N)
+Correction Hamiltonian in the interaction picture.
+# Arguments
+- `t::Real`: time.
+- `tf::Real`: gate time,
+- `χ::Tuple`: Tuple with first, second, and third order dispersive couplings.
+- `coeffs::Array`: corection coefficients.
+- `max_order::Integer`: maximum number of harmonics of the correction pulse.
+- `levels::StaticArray`: levels in which one wants to imprint a phase.
+- `α::Tuple`: the ''drinving angles'', which corresponds to π .- φ, where φ is the array with
+angles that one wishes to imprint.
+- `Ncorr::Integer`: bosonic subspace that should be corrected.
+- `N::Integer`: number of dimensions of the truncated bosonic space.
+"""
 function WI(t, tf, χ, coeffs, max_order, levels, α, Ncorr, N)
 	T = tf/2
 	Wt = W(t, tf, χ, coeffs, max_order, Ncorr, N)
@@ -365,42 +397,15 @@ function WI(t, tf, χ, coeffs, max_order, levels, α, Ncorr, N)
 	end
 	return Wt
 end
-
-
+"""
+	correction_coeffs2(Mlinear, Omega, max_order)
+Calculate the correction coefficients using the fully linear method.
+"""
 function correction_coeffs2(Mlinear, Omega, max_order)
 	if max_order > 1
 		println("Danger!!! Correct correction_coeffs()")
 	end
 	coeffs = pinv(Mlinear)*Omega[1: 3]
-	return coeffs
-end
-
-function correction_coeffs2(Mlinear, Mnonlinear, Omega, max_order)
-
-	Maux12 = Mlinear[1:2,1:2:end]
-	coeffs12 = zeros(4)
-	coeffs12[1] = 1.5*abs(Omega[3])#maximum(abs.(Omega))
-	coeffs12[2] = (Omega[1] - Maux12[1,1]*coeffs12[1])/Maux12[1,2]
-	coeffs12[3] = 1.5*abs(Omega[3])#*maximum(abs.(Omega))
-	coeffs12[4] = (Omega[2] - Maux12[2,3]*coeffs12[3])/Maux12[2,4]
-
-	DP.@polyvar x[1:4*max_order]
-	p3 = sum(Mlinear[3,:].*x) + sum(x.*(Mnonlinear[3,:,:]*x))
-	p3 = DP.subs(p3, x[1]=>coeffs12[1], x[3]=>coeffs12[2])
-	p3 = DP.subs(p3, x[5]=>coeffs12[3], x[7]=>coeffs12[4])
-
-	Maux3 = zeros(1, 2*max_order)
-	for i=1:max_order
-		Maux3[1,1] = convert(Float64, DP.differentiate(p3, x[2]))
-		Maux3[1,2] = convert(Float64, DP.differentiate(p3, x[4]))
-		Maux3[1,3] = convert(Float64, DP.differentiate(p3, x[6]))
-		Maux3[1,4] = convert(Float64, DP.differentiate(p3, x[8]))
-	end
-	coeffs3 = pinv(Maux3)*[Omega[3] - convert(Float64, p3[2*max_order+1])]
-
-	coeffs = zeros(4*max_order)
-	coeffs[1:2:end] .= coeffs12
-	coeffs[2:2:end] .= coeffs3
 	return coeffs
 end
 """
@@ -441,29 +446,15 @@ function df3!(dOmega, Omega, args, t)
 	dOmega .= W0(t)
 	return nothing
 end
-
-# function U(system_params, σ, coeffs, max_order; matrix::Bool = false,
-# 		   qubit_frame::Bool = false)
-# 	tf = system_params["tf"]
-# 	χ = system_params["chi"]
-# 	levels = system_params["levels"]
-# 	α = system_params["alpha"]
-# 	Ncorr = system_params["Ncorr"]
-# 	N = system_params["N"]
-#
-# 	if qubit_frame == false
-# 		Faux = @closure t-> (VI(t, tf, χ, levels, α, N)
-# 							 .+ WI(t, tf, χ, coeffs, max_order, levels, α, Ncorr, N))
-# 	else
-# 		Faux = @closure t-> Flab_corrected(t, tf, χ, levels, α, coeffs, max_order, Ncorr, N)
-# 	end
-# 	sol = solveU(H, χ, Faux, tf, N, σ)
-# 	if matrix == false
-# 		return sol
-# 	else
-# 		return tensor2matrix(sol)
-# 	end
-# end
+"""
+	U(system_params, σ, coeffs, max_order; frame::String = "qubit", matrix::Bool = false)
+Calculate the evolution operator.
+# Keyword arguments
+- `frame::String`: The frame in which the evolution must be calculated. The frame can be the
+`qubit` frame, the `lab` frame, or the `interaction` frame. Default value is `qubit`.
+- `matrix::Bool`: if `true`, U is returned as a matrix. If `false`, U is returned as a
+tensor. Default value is `false`.
+"""
 function U(system_params, σ, coeffs, max_order; frame::String = "qubit",
 		   matrix::Bool = false)
 	tf = system_params["tf"]
@@ -490,7 +481,10 @@ function U(system_params, σ, coeffs, max_order; frame::String = "qubit",
 		return tensor2matrix(sol)
 	end
 end
-
+"""
+	get_coeffs(magnus_order, max_order, Ncorr, system_params)
+Calculate the correction coefficients.
+"""
 function get_coeffs(magnus_order, max_order, Ncorr, system_params)
 	N = system_params["N"]
 	tf = system_params["tf"]
@@ -502,7 +496,10 @@ function get_coeffs(magnus_order, max_order, Ncorr, system_params)
 	coeffs = get_coeffs_aux(Faux, magnus_order, max_order, system_params)
 	return coeffs
 end
-
+"""
+	get_coeffs(coeffs, magnus_order, max_order, Ncorr, system_params)
+Calculate the correction coefficients.
+"""
 function get_coeffs(coeffs, magnus_order, max_order, Ncorr, system_params)
 	N = system_params["N"]
 	tf = system_params["tf"]
@@ -516,7 +513,10 @@ function get_coeffs(coeffs, magnus_order, max_order, Ncorr, system_params)
 	coeffs = get_coeffs_aux(Faux, magnus_order, max_order, system_params)
 	return coeffs
 end
-
+"""
+	get_coeffs_aux(Faux, magnus_order, max_order, system_params)
+Calculate the correction coefficients.
+"""
 function get_coeffs_aux(Faux, magnus_order, max_order, system_params)
 	tf = system_params["tf"]
 	Ncorr = system_params["Ncorr"]
@@ -536,13 +536,14 @@ function get_coeffs_aux(Faux, magnus_order, max_order, system_params)
 	end
 	return coeffs
 end
-
-#################
-
+"""
+	fcorrected(t, tf, α, coeffs)
+Calculate corrected envelope function in number state subspace.
+"""
 function fcorrected(t, tf, α, coeffs)
 	gx, gy = g(t, tf, coeffs, max_order)
-	theta = pi/2.0
-	T = tf/2.0
+	theta = pi/2
+	T = tf/2
 	if t < T
 		fx = theta*fc(t, T, 1) + gx
 		fy = gy
@@ -553,11 +554,14 @@ function fcorrected(t, tf, α, coeffs)
 	end
 	return fx, fy
 end
-
+"""
+	Fcorrected(t, tf, χ, levels, α, coeffs, Ncorr, N)
+Calculate the corrected driving Hamiltonian in the qubit frame.
+"""
 function Fcorrected(t, tf, χ, levels, α, coeffs, Ncorr, N)
 	χef = (χ[1], χ[2]/2, χ[3]/6)
 	Ft = zeros(4, N)
-	for i=1:length(levels)
+	for i = 1: length(levels)
 		Fj!(Ft, t, tf, χef, levels[i], α[i], N, false)
 	end
 	for i = 1: Ncorr
@@ -566,25 +570,31 @@ function Fcorrected(t, tf, χ, levels, α, coeffs, Ncorr, N)
 	end
 	return Ft
 end
-
+"""
+	correction_pulse_envelope(t, tf, χ, coeffs, max_order, Ncorr)
+Calculate the correction pulse envelope in the lab frame.
+"""
 function correction_pulse_envelope(t, tf, χ, coeffs, max_order, Ncorr)
 	χef = (χ[1], χ[2]/2, χ[3]/6)
-	gx_qubit, gy_qubit = 0.0, 0.0
+	gx_lab, gy_lab = zero(t), zero(t)
 	for n = 0: Ncorr - 1
 		coeffsn = view(coeffs, 4*max_order*n + 1: 4*max_order*(n+1))
 		gx, gy = g(t, tf, coeffsn, max_order)
 		dφn = χef[1]*n + χef[2]*n*(n - 1) + χef[3]*n*(n - 1)*(n - 2)
 		φ = dφn*t
 		cosφ, sinφ = cos(φ), sin(φ)
-		gx_qubit += gx*cosφ + gy*sinφ
-		gy_qubit += gx*sinφ - gy*cosφ
+		gx_lab += gx*cosφ + gy*sinφ
+		gy_lab += gx*sinφ - gy*cosφ
 	end
-	return gx_qubit, gy_qubit
+	return gx_lab, gy_lab
 end
-
+"""
+	pulse_envelope(t, tf, χ, levels, α)
+Calculate the (uncorrected) pulse envelope in the lab frame
+"""
 function pulse_envelope(t, tf, χ, levels, α)
 	χef = (χ[1], χ[2]/2, χ[3]/6)
-	fx_lab, fy_lab = 0.0, 0.0
+	fx_lab, fy_lab = zero(t), zero(t)
 	for i = 1: length(levels)
 		fx, fy = f(t, tf, α[i])
 		li = levels[i]
@@ -596,7 +606,10 @@ function pulse_envelope(t, tf, χ, levels, α)
 	end
 	return fx_lab, fy_lab
 end
-
+"""
+	Flab(t, tf, χ, levels, α, N; ideal_interaction::Bool=false)
+Calculate the driving Hamiltonian in the lab frame.
+"""
 function Flab(t, tf, χ, levels, α, N; ideal_interaction::Bool=false)
 	χef = (χ[1], χ[2]/2, χ[3]/6)
 	Ft = zeros(4, N)
@@ -630,7 +643,10 @@ function Flab(t, tf, χ, levels, α, N; ideal_interaction::Bool=false)
 	end
 	return Ft
 end
-
+"""
+	Flab_corrected(t, tf, χ, levels, α, coeffs, max_order, Ncorr, N)
+Calculate the corrected driving Hamiltonian in the lab frame.
+"""
 function Flab_corrected(t, tf, χ, levels, α, coeffs, max_order, Ncorr, N)
 	χef = (χ[1], χ[2]/2, χ[3]/6)
 	Ft = zeros(4, N)
