@@ -1,6 +1,9 @@
 using QuadGK
 using FastClosures
-#Harmonic correction in the rotating frame.
+"""
+	WharmonicR(t, tf, coeffs)
+Harmonic correction Hamiltonian in the rotating frame.
+"""
 function WharmonicR(t, tf, coeffs)
 	ε1, ε2, Δ = coeffs[1], coeffs[2], coeffs[3]
 	cos2t, sin2t = cos(2*t), sin(2*t)
@@ -11,7 +14,10 @@ function WharmonicR(t, tf, coeffs)
 	W[3] = Δ/2
 	return W
 end
-#Harmonic correction in the interaction frame.
+"""
+	WharmonicI(t, tf, coeffs)
+Harmonic correction Hamiltonian in the interaction picture.
+"""
 function WharmonicI(t, tf, coeffs)
 	ε1, ε2, Δ = coeffs[1], coeffs[2], coeffs[3]
 	cos2t, sin2t = cos(2*t), sin(2*t)
@@ -24,7 +30,10 @@ function WharmonicI(t, tf, coeffs)
 	W[3] = g*cos2t*sinh2Λ + (Δ/2 + g)*cosh2Λ
 	return W
 end
-#correction matrix for the harmonic correction.
+"""
+	correction_matrix(tf)
+Correction matrix for the harmonic correction.
+"""
 function correction_matrix(tf)
 	M = zeros(Float64, 3, 3)
 	h(t) = 1 - cos(2*pi*t/tf)
@@ -52,13 +61,19 @@ function correction_matrix(tf)
 
 	return M
 end
-#Calculate the coefficients of the harmonic correction.
+"""
+	coefficients_W(Omega, M)
+Calculate the coefficients of the harmonic correction.
+"""
 function coefficients_W(Omega, M)
 	ih_vec = Omega
 	coeffs = inv(M)*ih_vec
 	return coeffs
 end
-
+"""
+	get_coeffs(M, coeffs, order, tf)
+Calculate the coefficients of the Harmonic correction.
+"""
 function get_coeffs(M, coeffs, order, tf)
 	A = @closure (t-> -V_I(t, tf) .- WharmonicI(t, tf, coeffs))
 
@@ -69,6 +84,10 @@ function get_coeffs(M, coeffs, order, tf)
     coeffs = coefficients_W(vec, M)
     return coeffs
 end
+"""
+	get_coeffs(M, order, tf)
+Calculate the coefficients of the Harmonic correction.
+"""
 function get_coeffs(M, order, tf)
     coeffs = zeros(3)
     for k = 1: order

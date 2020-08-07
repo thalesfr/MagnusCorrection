@@ -1,23 +1,36 @@
 using DifferentialEquations
 using FastClosures
-#commutator of the group (a^2 + a†^2), -i(a^2 - a†^2), 2a†a+1.
+"""
+	comm!(commAB, A, B)
+Calculate the commutator of the operators A and B, and save the result in commAB.
+The operators are written in the basis { a^2 + a†^2, -i(a^2 - a†^2), 2a†a+1 }.
+"""
 function comm!(commAB, A, B)
 	commAB[1] = 4*(A[3]*B[2] - A[2]*B[3])
 	commAB[2] = 4*(A[1]*B[3] - A[3]*B[1])
 	commAB[3] = 4*(A[1]*B[2] - A[2]*B[1])
 	return nothing
 end
-#definite integral of the envelope function
+"""
+	Λ(t, tf)
+Definite integral of the driving envelope.
+"""
 function Λ(t, tf)
 	x = t/tf
 	return (x - sin(2*pi*x)/(2*pi))
 end
-#envelope function
+"""
+	λ(t, tf)
+Driving envelope.
+"""
 function λ(t, tf)
 	x = t/tf
 	return (1 - cos(2*pi*x))/tf
 end
-#Hamiltonian
+"""
+	H(t, tf; cr_terms::Bool=true)
+Hamiltonian of a parametrically driven cavity.
+"""
 function H(t, tf; cr_terms::Bool=true)
 	λt = λ(t, tf)
 	Ht = zeros(3)
@@ -30,7 +43,10 @@ function H(t, tf; cr_terms::Bool=true)
 	end
 	return Ht
 end
-#V operator in the interaction picture
+"""
+	V_I(t, tf)
+Error Hamiltonian V in the interaction picture.
+"""
 function V_I(t, tf)
 	λt = λ(t, tf)
 	Λt = Λ(t, tf)
@@ -41,19 +57,26 @@ function V_I(t, tf)
 	V_It[3] = λt*(sin(2*t)*cosh(2*Λt) + sin(4*t)*sinh(2*Λt)/2)
 	return V_It
 end
-#Heisenberg equations for v = [a, a†].
+"""
+	dv!(dv, v, args, t)
+Heisenberg equations for v = [a, a†].
+"""
 function dv!(dv, v, args, t)
 	H = args[1]
 	tf = args[2]
 	cr_terms = args[3]
 	Ht = H(t)
-	dv[1, :, :] .= (-2im*Ht[1] + 2*Ht[2])*v[2, :, :] .- 2im*Ht[3]*v[1, :, :]
-	dv[2, :, :] .= (+2im*Ht[1] + 2*Ht[2])*v[1, :, :] .+ 2im*Ht[3]*v[2, :, :]
+	a = view(v, :, :, 1)
+	adagger = view(v, :, :, 2)
+	dv[:, :, 1] .= (-2im*Ht[1] + 2*Ht[2])*adagger .- 2im*Ht[3]*a
+	dv[:, :, 2] .= (+2im*Ht[1] + 2*Ht[2])*a .+ 2im*Ht[3]*adagger
 end
-#Differential equations for the second moments (v = [a^2 + a†^2, -i(a^2 - a†^2),
-# aa† + a†a]).Dissipation is taken in account. The function H should return an
-# array with 3 elements which are the coefficients of the operators in the
-# vector v above.
+"""
+	d2moments!(dv, v, args, t)
+Differential equations for the second moments (v = [a^2 + a†^2, -i(a^2 - a†^2),
+aa† + a†a]). Dissipation is taken in account. `H` is a function the returns the Hamiltonian
+at time `t`.
+"""
 function d2moments!(dv, v, args, t)
 	H = args[1]
 	tf = args[2]
@@ -69,8 +92,10 @@ function d2moments!(dv, v, args, t)
 	dv[2] = 2*gimag*v[1] - κ*v[2] + 2*fimag*v[3]
 	dv[3] = 2*freal*v[1] + 2*fimag*v[2] - κ*v[3] + κ
 end
-
-#Solves equations of motions for the second moments.
+"""
+	solve_2moments(tf, κ, cr_terms, coeffs)
+Solve equations of motions for the second moments.
+"""
 function solve_2moments(tf, κ, cr_terms, coeffs)
 	Hmod = @closure t-> H(t, tf; cr_terms=cr_terms) .+ WharmonicR(t, tf, coeffs)
 	f0 = [0.0, 0.0, 1.0]
